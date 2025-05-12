@@ -1,0 +1,183 @@
+name: JFrog CLI Java Build using Gradle and OIDC
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  actions: read # for detecting the Github Actions environment.
+  id-token: write # for creating OIDC tokens for signing.
+  packages: write # for uploading attestations.
+  contents: read
+  security-events: write # Required for uploading code scanning.
+
+jobs:
+  dockerPackage:
+    name: "Docker"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        java: [17]
+        include:
+          - language: ['java-kotlin']
+            build-mode: none 
+    env:  
+      JAVA_PROVIDER: 'corretto'
+      JAVA_VERSION: '17'
+      JF_RT_URL: https://${{vars.JF_NAME}}.jfrog.io
+      RT_REPO_GRADLE_VIRTUAL: "sdx-app-gradle-virtual"
+      RT_REPO_GRADLE_DEV_LOCAL: "sdx-app-gradle-dev-local"
+      # RT_REPO_DOCKER_VIRTUAL: "krishnam-docker-virtual"
+      # RT_REPO_DOCKER_DEV_LOCAL: "krishnam-docker-dev-local"
+      DOCKER_BUILDX_PLATFORMS: 'linux/amd64,linux/arm64'
+      DOCKER_METADATA_JSON: 'build-metadata.json'
+      EVIDENCE_ARTIFACT_JSON: 'evd-artifact.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
+      EVIDENCE_PACKAGE_JSON: 'evd-package.json'
+      EVIDENCE_BUILD_JSON: 'evd-build.json'
+      EVIDENCE_RBv2C_JSON: 'evd-rbv2c.json'
+      RBV2_SIGNING_KEY: "${{secrets.RBV2_SIGNING_KEY}}" # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/create-signing-keys-for-release-bundles-v2
+      JOB_SUMMARY: false
+      JFROG_CLI_LOG_LEVEL: DEBUG # DEBUG, INFO, WARN, ERROR
+      BUILD_NAME: "gradle-oidc"
+      BUILD_ID: "ga-${{github.run_number}}" # ref: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#github-context
+    runs-on: ${{matrix.os}}
+    timeout-minutes: 30   # ref  https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes
+    steps:
+      # Use the specific setup-cli branch. Ref https://github.com/marketplace/actions/setup-jfrog-cli
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        id: setup-cli
+        env:
+          JF_URL: ${{env.JF_RT_URL}}
+          JFROG_CLI_RELEASES_REPO: '${{env.JF_RT_URL}}/artifactory/${{env.RT_REPO_GRADLE_VIRTUAL}}' 
+          JFROG_CLI_EXTRACTORS_REMOTE: '${{env.JF_RT_URL}}/artifactory/${{env.RT_REPO_GRADLE_VIRTUAL}}'
+          JF_GIT_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          version: latest  #2.71.0
+          oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
+          oidc-audience: ${{vars.JF_OIDC_AUDIENCE}}
+
+      - name: Clone VCS
+        uses: actions/checkout@v4 # ref: https://github.com/actions/checkout
+
+      - name: Java provider = ${{env.JAVA_PROVIDER}} with ver = ${{env.JAVA_VERSION}} 
+        uses: actions/setup-java@v4   # ref https://github.com/actions/setup-java
+        with:
+          distribution: ${{env.JAVA_PROVIDER}} # corretto
+          java-version: ${{env.JAVA_VERSION}}  # 17
+          cache: 'gradle'
+          cache-dependency-path: 'build.gradle'
+
+      - name: Software version
+        run: |
+          # JFrog CLI version
+          jf --version
+          # Ping the server
+          jf rt ping
+          # Java
+          java -version
+          # MVN
+          mvn -version
+          # Docker
+          docker -v
+          # Python
+          python3 -V
+          pip3 -V
+          # jf config
+          jf config show
+
+      - name: Config jf with gradle repos
+        run: |
+          export JFROG_CLI_LOG_LEVEL=${{env.JFROG_CLI_LOG_LEVEL}}
+          export JFROG_CLI_LOG_TIMESTAMP=DATE_AND_TIME
+          # jf gradlec --server-id-resolve=jfrog --server-id-deploy=jfrog --repo-resolve=sdx-app-gradle-virtual --repo-deploy=sdx-app-gradle-dev-local
+          jf gradlec --global --repo-resolve=${{env.RT_REPO_GRADLE_VIRTUAL}} --repo-deploy=${{env.RT_REPO_GRADLE_VIRTUAL}}
+      # Package
+      - name: "Curation: audit" # https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/cli-for-jfrog-security/cli-for-jfrog-curation
+        timeout-minutes: 15    # ref https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
+        continue-on-error: true    # ref: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error
+        run: |
+          jf ca --format=table --threads=10
+
+      - name: "Xray & JAS: Audit"  # https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/cli-for-jfrog-security
+        # scan for Xray: Source code dependencies and JAS: Secrets Detection, IaC, Vulnerabilities Contextual Analysis 'SAST'
+        timeout-minutes: 15  # ref: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
+        continue-on-error: true    # ref: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error
+        run: |
+          jf audit --gradle --sast=true --sca=true --secrets=true --licenses=true --validate-secrets=true --vuln=true --format=table --extended-table=true --threads=100 --fail=false
+      
+      - name: "Package: Build with Gradle"
+        run: |
+          jf gradle clean artifactoryPublish -b ./build.gradle --build-name=${{env.BUILD_NAME}} --build-number=${{env.BUILD_ID}}
+
+      - name: "Package: Xray - mvn Artifact scan"
+        timeout-minutes: 15  # ref: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
+        continue-on-error: true    # ref: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error
+        run: |
+          jf scan . --format=table --extended-table=true --threads=100 --fail=false
+
+      - name: "Optional: Set env vars for BuildInfo"   # These properties were captured in Builds >> spring-petclinic >> version >> Environment tab
+        run: |
+          export job="github-action" org="ps" team="architecture" product="jfrog-saas" 
+
+      # Build Info
+          # US 
+          #     Executive Order: 
+          #       https://www.whitehouse.gov/briefing-room/presidential-actions/2021/05/12/executive-order-on-improving-the-nations-cybersecurity/
+          #       https://www.nist.gov/itl/executive-order-14028-improving-nations-cybersecurity
+          #    US Dept of Commerce: https://www.ntia.gov/page/software-bill-materials
+          #    US Cyber Defence Agency: https://www.cisa.gov/sbom
+          #    NIST: https://www.nist.gov/itl/executive-order-14028-improving-nations-cybersecurity/software-security-supply-chains-software-1
+          #    NITA: https://www.ntia.gov/page/software-bill-materials 
+          #    Centers for Medicare & Medicaid Services: https://security.cms.gov/learn/software-bill-materials-sbom
+          # India
+          #    CERT-IN: https://www.cert-in.org.in/sbom/
+      - name: "BuildInfo: Collect env"
+        run: |
+          jf rt bce ${{env.BUILD_NAME}} ${{env.BUILD_ID}}
+
+      - name: "BuildInfo: Add VCS info"
+        run: jf rt bag ${{env.BUILD_NAME}} ${{env.BUILD_ID}} 
+
+      - name: Publish Build Info
+        run: |
+          jf rt bp ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --detailed-summary=true
+          sleep 20
+
+      # curl -L 'https://psazuse.jfrog.io/xray/api/v1/binMgr/builds' -H 'Content-Type: application/json' -H 'Authorization: ••••••' -d '{  "names": ["spring-petclinic"] }'
+      - name: "Optional: Add Builds to Indexing Configuration"
+        run: |
+          jf xr curl "/api/v1/binMgr/builds" -H 'Content-Type: application/json' -d '{"names": ["${{env.BUILD_NAME}}"] }'
+      # Set properties      
+      - name: "Optional: Set prop for Artifact"  # These properties were captured Artifacts >> repo path 'spring-petclinic.---.jar' >> Properties
+        run: |
+          ts="cmd.$(date '+%Y-%m-%d-%H-%M')" 
+          jf rt sp "job=github-action;env=demo;org=ps;team=arch;pack_cat=webapp;build=gradle;product=artifactory;features=package,buildinfo;ts=ts-${BUILD_ID}" --build="${{env.BUILD_NAME}}/${{env.BUILD_ID}}"
+
+      - name: "Optional: Query build info"
+        env: 
+          BUILD_INFO_JSON: "BuildInfo-${{env.BUILD_ID}}.json"
+        run: |
+           jf rt curl "/api/build/${{env.BUILD_NAME}}/${{env.BUILD_ID}}" -o $BUILD_INFO_JSON
+           cat $BUILD_INFO_JSON
+
+           sleep 20   # Sleeping for 20 seconds before executing the build publish seems to have resolved the build-scan issue. This delay might be helping with synchronization or resource availability, ensuring a smooth build process.
+
+      - name: "Optional: Query - Build Scan status"
+        run: |
+          jf xr curl "/api/v1/build/status" -H 'Content-Type: application/json' -d '{"name": "${{env.BUILD_NAME}}", "number": "${{env.BUILD_ID}}" }'
+ 
+
+      - name: "BuildInfo: Xray - Build scan"
+        timeout-minutes: 15    # ref https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
+        continue-on-error: true    # ref: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error
+        run: |
+          jf bs ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --fail=false --format=table --extended-table=true --rescan=false --vuln=true
+
+      - name: "Optional: Build Scan V2"  # https://jfrog.com/help/r/xray-rest-apis/scan-build-v2
+        # jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "spring-petclinic", "build_number": "ga-gdl-xray-50","rescan":true }'
+        run: |
+          jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "${{env.BUILD_NAME}}", "build_number": "${{env.BUILD_ID}}","rescan":false  }'
