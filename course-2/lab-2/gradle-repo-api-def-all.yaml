@@ -1,39 +1,39 @@
 localRepositories:
-  sdx-app-gradle-dev-local:
+  sdxapp-gradle-dev-local:
     type: gradle
     repoLayout: maven-2-default
     xray:
       enabled: true
-  sdx-app-gradle-rc-local:
+  sdxapp-gradle-rc-local:
     type: gradle
     repoLayout: maven-2-default
     xray:
       enabled: true
-  sdx-app-gradle-release-local:
+  sdxapp-gradle-release-local:
     type: gradle
     repoLayout: maven-2-default
     xray:
       enabled: true
-  sdx-app-gradle-prod-local:
+  sdxapp-gradle-prod-local:
     type: gradle
     repoLayout: maven-2-default
     xray:
       enabled: true
 remoteRepositories:
-  sdx-app-gradle-remote:
+  sdxapp-gradle-remote:
     type: gradle
     url: https://repo.maven.apache.org/maven2
     repoLayout: maven-2-default
     xray:
       enabled: true
 virtualRepositories:
-  sdx-app-gradle-virtual:
+  sdxapp-gradle-virtual:
     type: gradle
     repoLayout: maven-2-default
     repositories:
-      - sdx-app-gradle-dev-local
-      - sdx-app-gradle-rc-local
-      - sdx-app-gradle-release-local
-      - sdx-app-gradle-prod-local
-      - sdx-app-gradle-remote
-    defaultDeploymentRepo: sdx-app-gradle-rc-local 
+      - sdxapp-gradle-dev-local
+      - sdxapp-gradle-rc-local
+      - sdxapp-gradle-release-local
+      - sdxapp-gradle-prod-local
+      - sdxapp-gradle-remote
+    defaultDeploymentRepo: sdxapp-gradle-rc-local 

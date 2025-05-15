@@ -1,9 +1,9 @@
 localRepositories:
-  sdx-app-gradle-dev-local: null
-  sdx-app-gradle-rc-local: null
-  sdx-app-gradle-release-local: null
-  sdx-app-gradle-prod-local: null
+  sdxapp-gradle-dev-local: null
+  sdxapp-gradle-rc-local: null
+  sdxapp-gradle-release-local: null
+  sdxapp-gradle-prod-local: null
 remoteRepositories:
-  sdx-app-gradle-remote: null
+  sdxapp-gradle-remote: null
 virtualRepositories:
-  sdx-app-gradle-virtual: null 
+  sdxapp-gradle-virtual: null 
