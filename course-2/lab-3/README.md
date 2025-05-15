@@ -10,18 +10,18 @@ Practice building a Java application with Gradle and JFrog CLI, and manipulate J
 
 > Here is the [official documentation for generating Build Info with Gradle](https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/cli-for-jfrog-artifactory#gradle)
 
-## Prerequisites
+## Prerequisites (most of it had been created in lab 2)
 
 Make sure you have completed Lab 2 and have the following repositories created:
 
 | Repo type | Repo key | Package type | Environment | Comment |
 |---|---|---|---|---|
-| LOCAL | <USERNAME>-gradle-dev-local | GRADLE | DEV | |
-| LOCAL | <USERNAME>-gradle-rc-local | GRADLE | DEV | |
-| LOCAL | <USERNAME>-gradle-release-local | GRADLE | PROD | |
-| LOCAL | <USERNAME>-gradle-prod-local | GRADLE | PROD | |
-| REMOTE | <USERNAME>-gradle-remote | GRADLE | DEV | |
-| VIRTUAL | <USERNAME>-gradle-virtual | GRADLE | DEV | Includes all repos above |
+| LOCAL | USERNAME-gradle-dev-local | GRADLE | DEV | |
+| LOCAL | USERNAME-gradle-rc-local | GRADLE | DEV | |
+| LOCAL | USERNAME-gradle-release-local | GRADLE | PROD | |
+| LOCAL | USERNAME-gradle-prod-local | GRADLE | PROD | |
+| REMOTE | USERNAME-gradle-remote | GRADLE | DEV | |
+| VIRTUAL | USERNAME-gradle-virtual | GRADLE | DEV | Includes all repos above with default deployment to USERNAME-gradle-rc-local |
 
 ## Building and Publishing with Gradle
 
@@ -55,10 +55,6 @@ Make sure you have completed Lab 2 and have the following repositories created:
       --repo-deploy=${MY_PROJ_KEY}-gradle-virtual \
       --server-id-resolve=${JFROG_CLI_SERVER_ID} \
       --server-id-deploy=${JFROG_CLI_SERVER_ID}
-
-
-   cat gradle.properties
-
 
    ```
 
@@ -154,6 +150,20 @@ $JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version
 ```bash
 jf rbp --signing-key="thekey" $rb_name $rb_version PROD
 ## NOTE - save the created_millis value for later
+```
+
+## [OPTIONAL] Deletion promotion via the API
+
+> No deletion via the JFrog CLI
+
+```bash
+# you have to specify the creation time in ms, use the Get RBv2 promotion to get that info
+rb_creation_time="1724221096292"
+curl \
+    -XDELETE \
+    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+    -H "X-JFrog-Signing-Key-Name: thekey" \
+"$JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version/$rb_creation_time?async=false" 
 ```
 
 ## Troubleshooting
