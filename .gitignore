@@ -4,3 +4,5 @@
 *.class
 *.jar
 test-commands
+build/reports
+course-2-tree.txt
