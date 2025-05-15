@@ -40,6 +40,7 @@ Make sure you have completed Lab 2 and have the following repositories created:
 3. Set build information environment variables:
 
    ```bash
+   export MY_PROJ_KEY=<USERNAME> # 'export' command is for linux, for windows use 'set' command
    export JFROG_CLI_BUILD_NAME=${MY_PROJ_KEY}-gradle-app
    export JFROG_CLI_BUILD_NUMBER=1
    export JFROG_CLI_SERVER_ID=mill
@@ -49,7 +50,6 @@ Make sure you have completed Lab 2 and have the following repositories created:
 4. Configure Gradle for JFrog Artifactory:
 
    ```bash
-   export MY_PROJ_KEY=<USERNAME> # 'export' command is for linux, for windows use 'set' command
    jf gradlec \
       --repo-resolve=${MY_PROJ_KEY}-gradle-virtual \
       --repo-deploy=${MY_PROJ_KEY}-gradle-virtual \
@@ -88,15 +88,16 @@ Navigate to "Artifactory" -> "Builds", and check for your build named `<USERNAME
 
 * Release Bundle Name: `<USERNAME>-gradle-release`
 * Release Bundle Version: `1.0`
-* Signing Key: `thekey`
+* Signing Key: `jfrog_rbv2_key1`
 
 Click "Next", then "Create".
 
 ### Promotion
 
-After navigating to the RBv2's screen, click "Promote".
+In the "Promotions" sub-tab for the Release Bundle `<USERNAME>-gradle-release` ( example: `sdxapp-gradle-release`)  , Double click on the 
+Release Bundle Version: `1.0`  to  navigate to the RBv2's details screen , click "Actions > Promote".
 
-* For Signing Key, select `thekey`.
+* For Signing Key, select `jfrog_rbv2_key1`.
 * For Target Environment, select `PROD`.
 
 Click "Next", ensure that the "Target Repositories" for Gradle artifacts is set properly, and click "Promote".
@@ -123,7 +124,7 @@ Click "Next", ensure that the "Target Repositories" for Gradle artifacts is set 
        -XPOST \
        -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
        -H "Content-Type: application/json" \
-       -H "X-JFrog-Signing-Key-Name: thekey" \
+       -H "X-JFrog-Signing-Key-Name: jfrog_rbv2_key1" \
        -d @"rb_from_aql_ok.json" \
    $JFROG_SAAS_URL/lifecycle/api/v2/release_bundle 
    ```
@@ -140,7 +141,7 @@ curl \
     -XPOST \
     -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
     -H "Content-Type: application/json" \
-    -H "X-JFrog-Signing-Key-Name: thekey" \
+    -H "X-JFrog-Signing-Key-Name: jfrog_rbv2_key1" \
     -d @"rb_promotion.json" \
 $JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version 
 ```
@@ -148,8 +149,22 @@ $JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version
 ## [OPTIONAL] Promotion via JFrog CLI
 
 ```bash
-jf rbp --signing-key="thekey" $rb_name $rb_version PROD
+jf rbp --signing-key="jfrog_rbv2_key1" $rb_name $rb_version PROD
 ## NOTE - save the created_millis value for later
+```
+Output:
+```
+16:11:30 [🔵Info] Release Bundle successfully promoted
+{
+  "repository_key" : "release-bundles-v2",
+  "release_bundle_name" : "sdxapp-gradle-rb",
+  "release_bundle_version" : "1.0.0",
+  "environment" : "PROD",
+  "included_repository_keys" : [ "sdxapp-gradle-release-local" ],
+  "excluded_repository_keys" : [ ],
+  "created" : "2025-05-15T23:35:23.900Z",
+  "created_millis" : 1747352123900
+}
 ```
 
 ## [OPTIONAL] Deletion promotion via the API
@@ -158,11 +173,12 @@ jf rbp --signing-key="thekey" $rb_name $rb_version PROD
 
 ```bash
 # you have to specify the creation time in ms, use the Get RBv2 promotion to get that info
-rb_creation_time="1724221096292"
+rb_creation_time="1747352123900"
+
 curl \
     -XDELETE \
     -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-    -H "X-JFrog-Signing-Key-Name: thekey" \
+    -H "X-JFrog-Signing-Key-Name: jfrog_rbv2_key1" \
 "$JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version/$rb_creation_time?async=false" 
 ```
 

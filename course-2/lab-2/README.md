@@ -117,6 +117,15 @@ For example:
        -T gradle-repo-api-def-all.yaml  \
         "api/system/configuration"
    ```
+Note: Since you cannot set the environment field for the repos , from the JFrog UI set the repository environments 
+to match the above table  . 
+
+For example:
+```
+sdxapp-gradle-dev-local -> DEV
+sdxapp-gradle-rc-local -> DEV
+sdxapp-gradle-release-local -> PROD 
+```
 
 2. Delete the Gradle repositories:
 

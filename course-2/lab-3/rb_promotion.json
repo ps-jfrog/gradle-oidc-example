@@ -1,5 +1,5 @@
 
 {
-    "environment": "DEV",
-    "included_repository_keys": ["dakar-maven-dev-local"]
+    "environment": "PROD",
+    "included_repository_keys": ["sdxapp-gradle-release-local"]
 }
