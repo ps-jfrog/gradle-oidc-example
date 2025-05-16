@@ -172,16 +172,23 @@ Output:
 curl -i -k -X GET "$JFROG_SAAS_URL/lifecycle/api/v2/release_bundle/statuses/$rb_name/$rb_version" \
     -H "Authorization: Bearer $JFROG_ACCESS_TOKEN"
 ```
+Output:
+```
+{
+  "status" : "COMPLETED"
+}
+```
 
 ## [OPTIONAL] Deletion of RBV2 promotion record via the API
 
 > No deletion via the JFrog CLI
 
-Note: You have to specify the creation time of the RBV2 promotion in ms, use the 
+Note: You have to specify the creation time of the RBV2 promotion record in ms.  Use the 
 
 [Get Release Bundle v2 Version Promotion Details](https://jfrog.com/help/r/jfrog-rest-apis/get-release-bundle-v2-version-promotion-details)
 
-to get that info
+to get that info.
+
 ```
 curl -i -k -X GET "$JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version" \
     -H "Authorization: Bearer $JFROG_ACCESS_TOKEN"
