@@ -163,17 +163,54 @@ Output:
   "included_repository_keys" : [ "sdxapp-gradle-release-local" ],
   "excluded_repository_keys" : [ ],
   "created" : "2025-05-15T23:35:23.900Z",
-  "created_millis" : 1747352123900
+  "created_millis" : 1747353204721
 }
 ```
 
-## [OPTIONAL] Deletion promotion via the API
+[Get Release Bundle v2 Version Status](https://jfrog.com/help/r/jfrog-rest-apis/get-release-bundle-v2-version-status)
+```
+curl -i -k -X GET "$JFROG_SAAS_URL/lifecycle/api/v2/release_bundle/statuses/$rb_name/$rb_version" \
+    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN"
+```
+
+## [OPTIONAL] Deletion of RBV2 promotion record via the API
 
 > No deletion via the JFrog CLI
 
+Note: You have to specify the creation time of the RBV2 promotion in ms, use the 
+
+[Get Release Bundle v2 Version Promotion Details](https://jfrog.com/help/r/jfrog-rest-apis/get-release-bundle-v2-version-promotion-details)
+
+to get that info
+```
+curl -i -k -X GET "$JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version" \
+    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN"
+```
+Output:
+```
+{
+  "promotions" : [ {
+    "status" : "COMPLETED",
+    "repository_key" : "release-bundles-v2",
+    "release_bundle_name" : "sdxapp-gradle-rb",
+    "release_bundle_version" : "1.0.0",
+    "environment" : "PROD",
+    "service_id" : "jfrt@01jvam5dvet37v0ga18axy1t8d",
+    "created_by" : "sureshv",
+    "created" : "2025-05-15T23:53:24.721Z",
+    "created_millis" : 1747353204721,
+    "xray_retrieval_status" : "NOT_APPLICABLE"
+  } ],
+  "total" : 1,
+  "limit" : 1000,
+  "offset" : 0
+}
+```
+
 ```bash
-# you have to specify the creation time in ms, use the Get RBv2 promotion to get that info
-rb_creation_time="1747352123900"
+#specify the creation time of the RBV2 promotion in ms
+rb_creation_time="1747353204721"
+
 
 curl \
     -XDELETE \
