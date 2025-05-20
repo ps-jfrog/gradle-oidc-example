@@ -14,8 +14,8 @@ permissions:
   security-events: write # Required for uploading code scanning.
 
 jobs:
-  dockerPackage:
-    name: "Docker"
+  gradlePackage:
+    name: "Gradle"
     strategy:
       fail-fast: false
       matrix:
@@ -32,12 +32,12 @@ jobs:
       RT_REPO_GRADLE_DEV_LOCAL: "sdx-app-gradle-dev-local"
       # RT_REPO_DOCKER_VIRTUAL: "krishnam-docker-virtual"
       # RT_REPO_DOCKER_DEV_LOCAL: "krishnam-docker-dev-local"
-      DOCKER_BUILDX_PLATFORMS: 'linux/amd64,linux/arm64'
-      DOCKER_METADATA_JSON: 'build-metadata.json'
-      EVIDENCE_ARTIFACT_JSON: 'evd-artifact.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
-      EVIDENCE_PACKAGE_JSON: 'evd-package.json'
-      EVIDENCE_BUILD_JSON: 'evd-build.json'
-      EVIDENCE_RBv2C_JSON: 'evd-rbv2c.json'
+      # DOCKER_BUILDX_PLATFORMS: 'linux/amd64,linux/arm64'
+      # DOCKER_METADATA_JSON: 'build-metadata.json'
+      # EVIDENCE_ARTIFACT_JSON: 'evd-artifact.json'  # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-setup
+      # EVIDENCE_PACKAGE_JSON: 'evd-package.json'
+      # EVIDENCE_BUILD_JSON: 'evd-build.json'
+      # EVIDENCE_RBv2C_JSON: 'evd-rbv2c.json'
       RBV2_SIGNING_KEY: "${{secrets.RBV2_SIGNING_KEY}}" # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/create-signing-keys-for-release-bundles-v2
       JOB_SUMMARY: false
       JFROG_CLI_LOG_LEVEL: DEBUG # DEBUG, INFO, WARN, ERROR
@@ -59,6 +59,7 @@ jobs:
           version: latest  #2.71.0
           oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
           oidc-audience: ${{vars.JF_OIDC_AUDIENCE}}
+          disable-job-summary: ${{env.JOB_SUMMARY}}
 
       - name: Clone VCS
         uses: actions/checkout@v4 # ref: https://github.com/actions/checkout
@@ -79,22 +80,39 @@ jobs:
           jf rt ping
           # Java
           java -version
-          # MVN
-          mvn -version
-          # Docker
-          docker -v
-          # Python
-          python3 -V
-          pip3 -V
+          # Gradle
+          gradle -v
           # jf config
           jf config show
 
       - name: Config jf with gradle repos
         run: |
-          export JFROG_CLI_LOG_LEVEL=${{env.JFROG_CLI_LOG_LEVEL}}
+          # export JFROG_CLI_LOG_LEVEL=${{env.JFROG_CLI_LOG_LEVEL}}
           export JFROG_CLI_LOG_TIMESTAMP=DATE_AND_TIME
           # jf gradlec --server-id-resolve=jfrog --server-id-deploy=jfrog --repo-resolve=sdx-app-gradle-virtual --repo-deploy=sdx-app-gradle-dev-local
           jf gradlec --global --repo-resolve=${{env.RT_REPO_GRADLE_VIRTUAL}} --repo-deploy=${{env.RT_REPO_GRADLE_VIRTUAL}}
+      
+      - name: "list folder"
+        run: |
+          pwd
+          tree . 
+
+      - name: "Gradle: prestep-summary"
+        run: |
+          jfcliv=`jf --version`
+          echo ":frog: Gradle: Prestep Summary :pushpin:" >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo " - Installed JFrog CLI [${jfcliv}](https://jfrog.com/getcli/) and Java [${{env.JAVA_PROVIDER}}](https://github.com/actions/setup-java) v${{env.JAVA_VERSION}} " >> $GITHUB_STEP_SUMMARY
+          echo "    - $(jf --version) " >> $GITHUB_STEP_SUMMARY
+          # echo "    - $(gradle -v) " >> $GITHUB_STEP_SUMMARY
+          echo " - Configured the JFrog Cli with SaaS Artifactory OIDC integration  " >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo " - Variables info" >> $GITHUB_STEP_SUMMARY
+          echo "    - ID: ${{env.BUILD_ID}} " >> $GITHUB_STEP_SUMMARY
+          echo "    - Build Name: ${{env.BUILD_NAME}} " >> $GITHUB_STEP_SUMMARY
+          echo "    - Gradle Repo URL: ${{env.RT_REPO_GRADLE_VIRTUAL}}" >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
       # Package
       - name: "Curation: audit" # https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/cli-for-jfrog-security/cli-for-jfrog-curation
         timeout-minutes: 15    # ref https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
@@ -111,7 +129,7 @@ jobs:
       
       - name: "Package: Build with Gradle"
         run: |
-          jf gradle clean artifactoryPublish -b ./build.gradle --build-name=${{env.BUILD_NAME}} --build-number=${{env.BUILD_ID}}
+          jf gradle clean artifactoryPublish -x test -b ./build.gradle --build-name=${{env.BUILD_NAME}} --build-number=${{env.BUILD_ID}}
 
       - name: "Package: Xray - mvn Artifact scan"
         timeout-minutes: 15  # ref: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
@@ -177,7 +195,6 @@ jobs:
         run: |
           jf bs ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --fail=false --format=table --extended-table=true --rescan=false --vuln=true
 
-      - name: "Optional: Build Scan V2"  # https://jfrog.com/help/r/xray-rest-apis/scan-build-v2
-        # jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "spring-petclinic", "build_number": "ga-gdl-xray-50","rescan":true }'
-        run: |
-          jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "${{env.BUILD_NAME}}", "build_number": "${{env.BUILD_ID}}","rescan":false  }'
+      # - name: "Optional: Build Scan V2"  # "jf bs" already does this https://jfrog.com/help/r/xray-rest-apis/scan-build-v2
+      #   run: |
+      #     jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "${{env.BUILD_NAME}}", "build_number": "${{env.BUILD_ID}}","rescan":false  }'
