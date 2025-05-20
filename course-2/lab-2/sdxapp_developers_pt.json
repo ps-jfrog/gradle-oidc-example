@@ -1,0 +1,19 @@
+{
+    "name" : "sdxapp_developers_pt",
+    "resources" : {
+      "artifact" : {
+        "actions" : {
+          "users" : { },
+          "groups" : {
+            "sdxapp_developers" : [ "WRITE", "READ", "ANNOTATE" ]
+          }
+        },
+        "targets" : {
+          "sdxapp-gradle-remote" : {
+            "include_patterns" : [ "**" ],
+            "exclude_patterns" : [ ]
+          }
+        }
+      }
+    }
+  }

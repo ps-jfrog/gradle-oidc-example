@@ -38,6 +38,8 @@ cd course-2/lab-2
    ```bash
    ./create_gradle_repos.sh
    ```
+In my test I have used the `<PROJECT_KEY>` as `sdxapp`.
+
 
 ### Manual repository creation using JFrog CLI
 
@@ -149,3 +151,110 @@ After creating the repositories, you can verify them in the Artifactory UI:
 2. Navigate to Administration > Repositories
 3. You should see your newly created repositories listed
 4. Check the configuration of the virtual repository to ensure it includes all the local and remote repositories 
+
+---
+## Create permission targets via the API
+
+> **IMPORTANT NOTE** : From Artifactory V7.72.0, the permission targets are managed by JFrog Access (internal microservice) and so the official API endpoint is ```access/api/v2/permissions```. The previous API endpoint ```artifactory/api/v2/security/permissions``` is still maintained for the moment but will be deprecated in the future (no ETA).
+
+> Here is the [official documentation on the API](https://jfrog.com/help/r/jfrog-rest-apis/permissions)
+
+Create the following groups from UI: 
+
+USERNAME_developers, USERNAME_uploaders
+
+In my test I have used the `<USERNAME_KEY>` as `sdxapp`.
+
+Create the following permission target(s) :
+
+Permission name | Resources | Population | Action | Comment
+---|---|--- |--- |---
+USERNAME_developers_pt | All Remote / "sdxapp-gradle-remote" | developers group | Read, Deploy/Cache ( which automatically adds the "Annotate" action)
+USERNAME_uploaders_pt  | ( All Remote + All local) / All "sdxapp-*" | uploaders group | Read, Deploy/Cache, Delete/Overwrite
+
+
+
+By using the following command(DONT FORGET to update sdxapp_developers_pt.json and sdxapp_uploaders_pt.json with your permission name and group name)
+
+```bash
+curl \
+   -X POST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -H "Content-Type: application/json" \
+   -d @"sdxapp_developers_pt.json" \
+"$JFROG_SAAS_URL/access/api/v2/permissions"
+
+curl \
+   -X POST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -H "Content-Type: application/json" \
+   -d @sdxapp_uploaders_pt.json \
+"$JFROG_SAAS_URL/access/api/v2/permissions"
+
+```
+
+## [OPTIONAL] Create permission targets via the JFrog CLI
+
+> relies on [```artifactory/api/v2/security/permissions```](https://jfrog.com/help/r/jfrog-rest-apis/create-permission-target)
+that will be depricated in future.
+
+Create the following permission target(s) :
+
+Permission name | Resources | Population | Action | Comment
+---|---|--- |--- |---
+USERNAME_consumers  | All Remote + All local | USERNAME_uploaders group | Read, Annotate
+
+```bash
+# generate 1 permission target definition and store it into permissions.json
+jf rt ptt pt-cli-template.json
+
+# apply 1 permission target definition
+jf rt ptc pt-cli-template.json
+```
+
+## Creating Scoped Tokens
+
+> Here is the [official documentation for Tokens](https://jfrog.com/help/r/jfrog-rest-apis/access-tokens)
+
+### Identity token
+
+Generate an identity token (will inherit the permission related to the current user) by executing the following command
+
+```bash
+curl \
+   -XPOST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -d "scope=applied-permissions/user" \
+$JFROG_SAAS_URL/access/api/v1/tokens
+```
+
+### Scoped token
+
+Generate a token based on groups (will inherit the permission related to the groups) by executing the following command
+
+```bash
+curl \
+   -XPOST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -d "scope=applied-permissions/groups:USERNAME_uploaders" \
+$JFROG_SAAS_URL/access/api/v1/tokens
+```
+
+### [OPTIONAL] Scoped token for a transient user (non existing user)
+
+> a token can be [refreshed](https://jfrog.com/help/r/jfrog-rest-apis/refresh-token)
+
+Generate a transient user (will inherit the permission related to the specified groups) by executing the following command
+
+```bash
+# the token will expire in 300 seconds and can be refreshed
+# it has to be executed by an Admin
+curl \
+   -XPOST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -d "username=ninja" \
+   -d "refreshable=true" \
+   -d "expires_in=300" \
+   -d "scope=applied-permissions/groups:USERNAME_uploaders" \
+$JFROG_SAAS_URL/access/api/v1/tokens
+```

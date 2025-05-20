@@ -1,0 +1,64 @@
+{
+  "name": "sdxapp_uploaders_pt",
+  "resources": {
+    "artifact": {
+      "actions": {
+        "users": {},
+        "groups": {
+          "sdxapp_uploaders": [
+            "WRITE",
+            "DELETE",
+            "READ",
+            "ANNOTATE"
+          ]
+        }
+      },
+      "targets": {
+        "sdxapp-gradle-rc-local": {
+          "include_patterns": [
+            "**"
+          ],
+          "exclude_patterns": []
+        },
+        "sdxapp-gradle-dev-local": {
+          "include_patterns": [
+            "**"
+          ],
+          "exclude_patterns": []
+        },
+        "sdxapp-gradle-release-local": {
+          "include_patterns": [
+            "**"
+          ],
+          "exclude_patterns": []
+        },
+        "sdxapp-gradle-remote": {
+          "include_patterns": [
+            "**"
+          ],
+          "exclude_patterns": []
+        },
+        "sdxapp-gradle-prod-local": {
+          "include_patterns": [
+            "**"
+          ],
+          "exclude_patterns": []
+        }
+      }
+    },
+    "build": {
+      "actions": {
+        "users": {},
+        "groups": {}
+      },
+      "targets": {
+        "artifactory-build-info": {
+          "include_patterns": [
+            "gradle-oidc/**"
+          ],
+          "exclude_patterns": []
+        }
+      }
+    }
+  }
+}

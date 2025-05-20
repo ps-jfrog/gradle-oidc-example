@@ -28,8 +28,8 @@ jobs:
       JAVA_PROVIDER: 'corretto'
       JAVA_VERSION: '17'
       JF_RT_URL: https://${{vars.JF_NAME}}.jfrog.io
-      RT_REPO_GRADLE_VIRTUAL: "sdx-app-gradle-virtual"
-      RT_REPO_GRADLE_DEV_LOCAL: "sdx-app-gradle-dev-local"
+      RT_REPO_GRADLE_VIRTUAL: "sdxapp-gradle-virtual"
+      # RT_REPO_GRADLE_DEV_LOCAL: "sdx-app-gradle-dev-local"
       # RT_REPO_DOCKER_VIRTUAL: "krishnam-docker-virtual"
       # RT_REPO_DOCKER_DEV_LOCAL: "krishnam-docker-dev-local"
       # DOCKER_BUILDX_PLATFORMS: 'linux/amd64,linux/arm64'
