@@ -78,6 +78,10 @@ Make sure you have completed Lab 2 and have the following repositories created:
 
 Navigate to "Artifactory" -> "Builds", and check for your build named `<USERNAME>-gradle-app` with build number `1`.
 
+## Generate and upload signing keys to Artifactory:
+
+Generate a GPG key that will be used to sign the Release Bundle and upload it to the JFrog Platform as mentioned in [generate_rbv2_gpg_key.md](generate_rbv2_gpg_key.md)
+
 ## RBv2 (Release Bundle v2) Management from the UI
 
 ### Creation
