@@ -198,6 +198,7 @@ jobs:
         run: |
           jf bs ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --fail=false --format=table --extended-table=true --rescan=false --vuln=true --project=${{env.PROJECT_KEY}}
 
+          
       # - name: "Optional: Build Scan V2"  # "jf bs" already does this https://jfrog.com/help/r/xray-rest-apis/scan-build-v2
       #   run: |
       #     jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "${{env.BUILD_NAME}}", "build_number": "${{env.BUILD_ID}}","rescan":false  }'
