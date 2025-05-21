@@ -43,6 +43,7 @@ jobs:
       JFROG_CLI_LOG_LEVEL: DEBUG # DEBUG, INFO, WARN, ERROR
       BUILD_NAME: "gradle-oidc"
       BUILD_ID: "ga-${{github.run_number}}" # ref: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#github-context
+      PROJECT_KEY: "${{vars.JF_PROJECT_KEY}}"
     runs-on: ${{matrix.os}}
     timeout-minutes: 30   # ref  https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes
     steps:
@@ -162,38 +163,48 @@ jobs:
 
       - name: Publish Build Info
         run: |
-          jf rt bp ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --detailed-summary=true
+          jf rt bp ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --detailed-summary=true --project=${{env.PROJECT_KEY}}
           sleep 60
 
       # curl -L 'https://psazuse.jfrog.io/xray/api/v1/binMgr/builds' -H 'Content-Type: application/json' -H 'Authorization: ••••••' -d '{  "names": ["spring-petclinic"] }'
       - name: "Optional: Add Builds to Indexing Configuration"
         run: |
-          jf xr curl "/api/v1/binMgr/builds" -H 'Content-Type: application/json' -d '{"names": ["${{env.BUILD_NAME}}"] }'
+          # jf xr curl "/api/v1/binMgr/builds" -H 'Content-Type: application/json' -d '{"names": ["${{env.BUILD_NAME}}"] }'
+          jf xr curl "/api/v1/binMgr/builds" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "builds_and_repos": [{
+                "names": ["${{env.BUILD_NAME}}"],
+                "repo": "${{env.RT_REPO_GRADLE_VIRTUAL}}-build-info",
+                "project_key": "${{env.PROJECT_KEY}}"
+              }]
+            }'
+
       # Set properties      
       - name: "Optional: Set prop for Artifact"  # These properties were captured Artifacts >> repo path 'spring-petclinic.---.jar' >> Properties
         run: |
           ts="cmd.$(date '+%Y-%m-%d-%H-%M')" 
-          jf rt sp "job=github-action;env=demo;org=ps;team=arch;pack_cat=webapp;build=gradle;product=artifactory;features=package,buildinfo;ts=ts-${BUILD_ID}" --build="${{env.BUILD_NAME}}/${{env.BUILD_ID}}"
+          jf rt sp "job=github-action;env=demo;org=ps;team=arch;pack_cat=webapp;build=gradle;product=artifactory;features=package,buildinfo;ts=ts-${BUILD_ID}" --build="${{env.BUILD_NAME}}/${{env.BUILD_ID}}" --project=${{env.PROJECT_KEY}}
 
       - name: "Optional: Query build info"
         env: 
           BUILD_INFO_JSON: "BuildInfo-${{env.BUILD_ID}}.json"
         run: |
-           jf rt curl "/api/build/${{env.BUILD_NAME}}/${{env.BUILD_ID}}" -o $BUILD_INFO_JSON
+           jf rt curl "/api/build/${{env.BUILD_NAME}}/${{env.BUILD_ID}}?project=${{env.PROJECT_KEY}}" -o $BUILD_INFO_JSON
            cat $BUILD_INFO_JSON
 
            sleep 20   # Sleeping for 20 seconds before executing the build publish seems to have resolved the build-scan issue. This delay might be helping with synchronization or resource availability, ensuring a smooth build process.
 
       - name: "Optional: Query - Build Scan status"
         run: |
-          jf xr curl "/api/v1/build/status" -H 'Content-Type: application/json' -d '{"name": "${{env.BUILD_NAME}}", "number": "${{env.BUILD_ID}}" }'
+          jf xr curl "/api/v1/build/status" -H 'Content-Type: application/json' -d '{"name": "${{env.BUILD_NAME}}", "number": "${{env.BUILD_ID}}" , "project": "${{env.PROJECT_KEY}}" }'
  
 
       - name: "BuildInfo: Xray - Build scan"
         timeout-minutes: 15    # ref https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
         continue-on-error: true    # ref: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error
         run: |
-          jf bs ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --fail=false --format=table --extended-table=true --rescan=false --vuln=true
+          jf bs ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --fail=false --format=table --extended-table=true --rescan=false --vuln=true --project=${{env.PROJECT_KEY}}
 
       # - name: "Optional: Build Scan V2"  # "jf bs" already does this https://jfrog.com/help/r/xray-rest-apis/scan-build-v2
       #   run: |
