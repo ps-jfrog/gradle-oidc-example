@@ -169,16 +169,8 @@ jobs:
       # curl -L 'https://psazuse.jfrog.io/xray/api/v1/binMgr/builds' -H 'Content-Type: application/json' -H 'Authorization: ••••••' -d '{  "names": ["spring-petclinic"] }'
       - name: "Optional: Add Builds to Indexing Configuration"
         run: |
-          # jf xr curl "/api/v1/binMgr/builds" -H 'Content-Type: application/json' -d '{"names": ["${{env.BUILD_NAME}}"] }'
-          jf xr curl "/api/v1/binMgr/builds" \
-            -H 'Content-Type: application/json' \
-            -d '{
-              "builds_and_repos": [{
-                "names": ["${{env.BUILD_NAME}}"],
-                "repo": "${{env.RT_REPO_GRADLE_VIRTUAL}}-build-info",
-                "project_key": "${{env.PROJECT_KEY}}"
-              }]
-            }'
+          jf xr curl "/api/v1/binMgr/builds?projectKey=${{env.PROJECT_KEY}}" -H 'Content-Type: application/json' -d '{"names": ["${{env.BUILD_NAME}}"] }'
+
 
       # Set properties      
       - name: "Optional: Set prop for Artifact"  # These properties were captured Artifacts >> repo path 'spring-petclinic.---.jar' >> Properties
