@@ -167,6 +167,7 @@ jobs:
           sleep 60
 
       # curl -L 'https://psazuse.jfrog.io/xray/api/v1/binMgr/builds' -H 'Content-Type: application/json' -H 'Authorization: ••••••' -d '{  "names": ["spring-petclinic"] }'
+      # This is not working for Project builds. Check this
       - name: "Optional: Add Builds to Indexing Configuration"
         run: |
           jf xr curl "/api/v1/binMgr/builds?projectKey=${{env.PROJECT_KEY}}" -H 'Content-Type: application/json' -d '{"names": ["${{env.BUILD_NAME}}"] }'
