@@ -53,7 +53,9 @@
           "${PROJECT_KEY}_uploaders": [
             "READ",
             "ANNOTATE",
-            "WRITE"
+            "WRITE",
+            "DELETE",
+            "SCAN"
           ]
         }
       },
