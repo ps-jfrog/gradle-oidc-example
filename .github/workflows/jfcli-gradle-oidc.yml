@@ -41,7 +41,7 @@ jobs:
       RBV2_SIGNING_KEY: "${{secrets.RBV2_SIGNING_KEY}}" # ref https://jfrog.com/help/r/jfrog-artifactory-documentation/create-signing-keys-for-release-bundles-v2
       JOB_SUMMARY: false
       JFROG_CLI_LOG_LEVEL: DEBUG # DEBUG, INFO, WARN, ERROR
-      BUILD_NAME: "gradle-oidc"
+      BUILD_NAME: "${{vars.JF_PROJECT_KEY}}-gradle-oidc"
       BUILD_ID: "ga-${{github.run_number}}" # ref: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#github-context
       PROJECT_KEY: "${{vars.JF_PROJECT_KEY}}"
     runs-on: ${{matrix.os}}

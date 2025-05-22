@@ -58,6 +58,13 @@
             "${PROJECT_KEY}-gradle-app/**"
           ],
           "exclude_patterns": []
+        },
+        "${PROJECT_KEY}-build-info": {
+          "include_patterns": [
+            "${PROJECT_KEY}-gradle-oidc/**",
+            "${PROJECT_KEY}-gradle-app/**"
+          ],
+          "exclude_patterns": []
         }
       }
     }
