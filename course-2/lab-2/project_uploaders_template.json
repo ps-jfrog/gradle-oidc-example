@@ -49,7 +49,13 @@
     "build": {
       "actions": {
         "users": {},
-        "groups": {}
+        "groups": {
+          "${PROJECT_KEY}_uploaders": [
+            "READ",
+            "ANNOTATE",
+            "WRITE"
+          ]
+        }
       },
       "targets": {
         "artifactory-build-info": {
