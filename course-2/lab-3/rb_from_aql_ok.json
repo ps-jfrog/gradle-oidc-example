@@ -1,9 +1,9 @@
 {
-  "release_bundle_name": "sdxapp-gradle-rb",
-  "release_bundle_version": "1.0.0",
+  "release_bundle_name": "${PROJECT_KEY}-gradle-rb",
+  "release_bundle_version": "${rb_version}",
   "skip_docker_manifest_resolution": true,
   "source_type": "aql",
   "source": {    
-    "aql": "items.find({ \"repo\": \"sdxapp-gradle-rc-local\", \"path\": \"org/yann/demo/0.0.1-SNAPSHOT\"})"
+    "aql": "items.find({ \"repo\": \"${PROJECT_KEY}-gradle-dev-local\", \"path\": \"org/yann/demo/0.0.1-SNAPSHOT\"})"
   }
 }

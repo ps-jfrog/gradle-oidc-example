@@ -1,11 +1,11 @@
 {
-  "name": "sdxapp_uploaders_pt",
+  "name": "${PROJECT_KEY}_uploaders_pt",
   "resources": {
     "artifact": {
       "actions": {
         "users": {},
         "groups": {
-          "sdxapp_uploaders": [
+          "${PROJECT_KEY}_uploaders": [
             "WRITE",
             "DELETE",
             "READ",
@@ -14,31 +14,31 @@
         }
       },
       "targets": {
-        "sdxapp-gradle-rc-local": {
+        "${PROJECT_KEY}-gradle-rc-local": {
           "include_patterns": [
             "**"
           ],
           "exclude_patterns": []
         },
-        "sdxapp-gradle-dev-local": {
+        "${PROJECT_KEY}-gradle-dev-local": {
           "include_patterns": [
             "**"
           ],
           "exclude_patterns": []
         },
-        "sdxapp-gradle-release-local": {
+        "${PROJECT_KEY}-gradle-release-local": {
           "include_patterns": [
             "**"
           ],
           "exclude_patterns": []
         },
-        "sdxapp-gradle-remote": {
+        "${PROJECT_KEY}-gradle-remote": {
           "include_patterns": [
             "**"
           ],
           "exclude_patterns": []
         },
-        "sdxapp-gradle-prod-local": {
+        "${PROJECT_KEY}-gradle-prod-local": {
           "include_patterns": [
             "**"
           ],
@@ -54,7 +54,8 @@
       "targets": {
         "artifactory-build-info": {
           "include_patterns": [
-            "gradle-oidc/**"
+            "${PROJECT_KEY}-gradle-oidc/**",
+            "${PROJECT_KEY}-gradle-app/**"
           ],
           "exclude_patterns": []
         }

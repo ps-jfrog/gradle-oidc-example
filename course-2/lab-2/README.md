@@ -10,7 +10,9 @@ This lab will guide you through creating Gradle repositories in JFrog Artifactor
 
 ## Create Gradle Repositories
 
-> Come up with a ```<PROJECT_KEY>``` which will be used as prefix for all your repositories(the project key can be your USERNAME)
+> Come up with a ```<PROJECT_KEY>``` which will be used as prefix for all your repositories
+
+In my test I have used the `<PROJECT_KEY>` as the customer name . For example `sdxapp`.
 
 You'll create the following repositories for Gradle:
 
@@ -23,6 +25,7 @@ You'll create the following repositories for Gradle:
 | REMOTE | <PROJECT_KEY>-gradle-remote | GRADLE | DEV | |
 | VIRTUAL | <PROJECT_KEY>-gradle-virtual | GRADLE | DEV | Includes all repos above with default deployment to <PROJECT_KEY>-gradle-rc-local |
 
+
 ### Using the provided script
 
 We've provided a script to automate the repository creation process:
@@ -34,14 +37,14 @@ cd course-2/lab-2
    chmod +x create_gradle_repos.sh
    ```
 
-2. Run the script and provide your username when prompted and theay will be used as the `<PROJECT_KEY>` prefix for the reposiotry names:
+2. Run the script and provide the customer name and that will be used as the `<PROJECT_KEY>` prefix for the repository names:
    ```bash
    ./create_gradle_repos.sh
    ```
-In my test I have used the `<PROJECT_KEY>` as `sdxapp`.
 
 
-### Manual repository creation using JFrog CLI
+
+### [OPTIONAL] Manual repository creation using JFrog CLI
 
 If you prefer to create repositories manually, follow these steps:
 
@@ -97,7 +100,7 @@ For example:
    # Edit to include all repos and set default deployment repo
    jf rt rc virtual-repo.json
    ```
-## [OPTIONAL] Create a repository structure using the Rest API (YAML PATCH)
+### [OPTIONAL] Create a repository structure using the Rest API (YAML PATCH)
 > with this option, you can create multiple repositories in 1 API call. However you can't :
 >
 > - parameterize your repo configuration
@@ -124,9 +127,14 @@ to match the above table  .
 
 For example:
 ```
-sdxapp-gradle-dev-local -> DEV
+sdxapp-gradle-remote -> DEV
+sdxapp-gradle-virtual -> DEV
+
 sdxapp-gradle-rc-local -> DEV
-sdxapp-gradle-release-local -> PROD 
+sdxapp-gradle-dev-local -> DEV
+
+sdxapp-gradle-prod-local  -> PROD
+sdxapp-gradle-release-local -> PROD
 ```
 
 2. Delete the Gradle repositories:
@@ -159,41 +167,50 @@ After creating the repositories, you can verify them in the Artifactory UI:
 
 > Here is the [official documentation on the API](https://jfrog.com/help/r/jfrog-rest-apis/permissions)
 
-Create the following groups from UI: 
+1. Create the following groups from UI: 
 
-USERNAME_developers, USERNAME_uploaders
+`<PROJECT_KEY>_developers`, `<PROJECT_KEY>_uploaders`
 
-In my test I have used the `<USERNAME_KEY>` as `sdxapp`.
+In my test I have used the `<PROJECT_KEY>` as `sdxapp`.
 
-Create the following permission target(s) :
+2. Create the following permission target(s) :
 
 Permission name | Resources | Population | Action | Comment
 ---|---|--- |--- |---
-USERNAME_developers_pt | All Remote / "sdxapp-gradle-remote" | developers group | Read, Deploy/Cache ( which automatically adds the "Annotate" action)
-USERNAME_uploaders_pt  | ( All Remote + All local) / All "sdxapp-*" | uploaders group | Read, Deploy/Cache, Delete/Overwrite
+<PROJECT_KEY>_developers_pt | All Remote / "<PROJECT_KEY>-gradle-remote" | developers group | Read, Deploy/Cache ( which automatically adds the "Annotate" action)
+<PROJECT_KEY>_uploaders_pt  | ( All Remote + All local) / All "<PROJECT_KEY>-*" | uploaders group | Read, Deploy/Cache, Delete/Overwrite
 
 
 
-By using the following command(DONT FORGET to update sdxapp_developers_pt.json and sdxapp_uploaders_pt.json with your permission name and group name)
+by using the following command:
 
 ```bash
+# Set your project key
+export PROJECT_KEY="sdxapp" # or any other project key you want
+
+export JFROG_SAAS_URL="https://example.jfrog.io"
+
+# Generate a final JSON by substituting variables
+envsubst < project_developers_template.json > "repo_json/${PROJECT_KEY}_developers_template.json"
+envsubst < project_uploaders_template.json > "repo_json/${PROJECT_KEY}_uploaders_template.json"
+
 curl \
    -X POST \
    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
    -H "Content-Type: application/json" \
-   -d @"sdxapp_developers_pt.json" \
+   -d @"repo_json/${PROJECT_KEY}_developers_template.json" \
 "$JFROG_SAAS_URL/access/api/v2/permissions"
 
 curl \
    -X POST \
    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
    -H "Content-Type: application/json" \
-   -d @sdxapp_uploaders_pt.json \
+   -d @"repo_json/${PROJECT_KEY}_uploaders_template.json" \
 "$JFROG_SAAS_URL/access/api/v2/permissions"
 
 ```
 
-## [OPTIONAL] Create permission targets via the JFrog CLI
+### [OPTIONAL] Create permission targets via the JFrog CLI
 
 > relies on [```artifactory/api/v2/security/permissions```](https://jfrog.com/help/r/jfrog-rest-apis/create-permission-target)
 that will be depricated in future.
@@ -202,7 +219,7 @@ Create the following permission target(s) :
 
 Permission name | Resources | Population | Action | Comment
 ---|---|--- |--- |---
-USERNAME_consumers  | All Remote + All local | USERNAME_uploaders group | Read, Annotate
+<PROJECT_KEY>_consumers  | All Remote + All local | <PROJECT_KEY>_uploaders group | Read, Annotate
 
 ```bash
 # generate 1 permission target definition and store it into permissions.json
@@ -211,6 +228,7 @@ jf rt ptt pt-cli-template.json
 # apply 1 permission target definition
 jf rt ptc pt-cli-template.json
 ```
+---
 
 ## Creating Scoped Tokens
 

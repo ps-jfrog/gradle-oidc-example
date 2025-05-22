@@ -1,5 +1,5 @@
 
 {
     "environment": "PROD",
-    "included_repository_keys": ["sdxapp-gradle-release-local"]
+    "included_repository_keys": ["${PROJECT_KEY}-gradle-release-local"]
 }

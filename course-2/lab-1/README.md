@@ -34,7 +34,41 @@ curl \
    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
 $JFROG_SAAS_URL/artifactory/<USERNAME>-generic-test-local/test.txt
 ```
+---
+## Install and configure the JFrog CLI
+1. Install the [JFrog CLI](https://jfrog.com/getcli/)
+```
+curl -fkL https://install-cli.jfrog.io | sh 
+```
+2. Configure the JFrog CLI with your Artifactory instance as mentioned in [jfrog-cli/authentication](https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/authentication):
 
+Option 1: Interactive configuration:
+
+- Configure CLI that point to JFrog Instance ``jf config add --interactive`` or ``jf c add --interactive``
+    - Choose a server ID: ```${{unique name}}```
+    - JFrog platform URL: ```https://{{host}}.jfrog.io```
+    - JFrog access token (Leave blank for username and password/API key): ```${{access_token}}```
+        - Create access token from UI ``Administration`` -> ``Identity and Access`` -> ``Access Tokens``
+    - Is the Artifactory reverse proxy configured to accept a client certificate (y/n) [n]?: ``n``
+
+
+- Use newly created config ``jf config use myartifactory``
+
+
+
+or
+
+Option 2: Browser Interactive configuration:
+
+```
+jf c add --interactive=true --url=<ARTIFACTORY BASE URL> --user=adminuser myartifactory
+
+```
+
+- Healthcheck ``jf rt ping``
+
+
+---
 ## Upload / Download via the JFrog CLI
 
 1. Create multiple text files
