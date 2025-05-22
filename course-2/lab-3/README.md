@@ -83,13 +83,14 @@ You will find the Published artifacts from the build is in `${PROJECT_KEY}-gradl
 
 ## Promote the Build
 
-Do some QA tests and Promote the build to `${PROJECT_KEY}-gradle-dev-local` repo in `DEV` Environment ( with move option i.e `--copy=false` ).
+Perform QA tests and promote the build to the `${PROJECT_KEY}-gradle-dev-local` repository in the `DEV` environment using the **move** option (--copy=false).
 
 ```bash
 jf rt bpr ${JFROG_CLI_BUILD_NAME} ${JFROG_CLI_BUILD_NUMBER} ${PROJECT_KEY}-gradle-dev-local --project=${PROJECT_KEY} --copy=false  --include-dependencies=false --status="QA Tests Passed" --comment="Ready for production release" --props="Testing=passed;release-version=hot-fix" 
 
 ```
-To check: A new Project Environment  ${PROJECT_KEY}-QA-Tests-Passed is created named based on the "--status"  specified in the build pormote. Why ?
+To check: **Clarification needed:** When promoting a project-level build, a **new project environment** named `${PROJECT_KEY}-QA-Tests-Passed` is automatically created, where the name is derived from the `--status` value provided during promotion.
+Is this **intentional behavior by design** in JFrog?
 
 
 
