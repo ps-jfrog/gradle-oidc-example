@@ -1,20 +1,19 @@
-# Lab 2: Gradle Repository Creation
+
+# Lab 2: Creating Build-info + Release Bundles & Package Promotion Process
 
 This lab will guide you through creating Gradle repositories in JFrog Artifactory.
 
-## Prerequisites
+## Create build info with Gradle
 
-- JFrog Artifactory access
-- JFrog CLI installed and configured
+> Here is the [official documentation for the JFrog CLI](https://docs.jfrog-applications.jfrog.io/)
 
+> Here is the [official documentation for generating Build Info with Gradle](https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/cli-for-jfrog-artifactory#gradle)
 
-## Create Gradle Repositories
+## Prerequisites (most of it had been created in lab 1)
 
-> Come up with a ```<PROJECT_KEY>``` which will be used as prefix for all your repositories
+Make sure you have completed Lab 1 and have the following repositories created:
 
-In my test I have used the `<PROJECT_KEY>` as the customer name . For example `sdxapp`.
-
-You'll create the following repositories for Gradle:
+In my test I have used the `<PROJECT_KEY>` as `sdxapp`.
 
 | Repo type | Repo key | Package type | Environment | Comment |
 |---|---|---|---|---|
@@ -25,254 +24,234 @@ You'll create the following repositories for Gradle:
 | REMOTE | <PROJECT_KEY>-gradle-remote | GRADLE | DEV | |
 | VIRTUAL | <PROJECT_KEY>-gradle-virtual | GRADLE | DEV | Includes all repos above with default deployment to <PROJECT_KEY>-gradle-rc-local |
 
+## 1. Building and Publishing with Gradle
 
-### Using the provided script
-
-We've provided a script to automate the repository creation process:
-```
-cd course-2/lab-2
-```
-1. Make the script executable:
-   ```bash
-   chmod +x create_gradle_repos.sh
-   ```
-
-2. Run the script and provide the customer name and that will be used as the `<PROJECT_KEY>` prefix for the repository names:
-   ```bash
-   ./create_gradle_repos.sh
-   ```
-
-
-
-### [OPTIONAL] Manual repository creation using JFrog CLI
-
-If you prefer to create repositories manually, follow these steps:
-
-1. Use the repository creation template command to generate a JSON file describing the repository:
+1. Navigate to the shared Java project directory:
 
    ```bash
-   jf rt rpt repository.json
+   cd ../common/java  # you should be in course-2/common/java
    ```
 
-   This is a command-line "wizard". Use the `tab` key and arrow keys to go through the wizard.
-   The only thing you are required to provide is the repository's name, class (local/remote/virtual), and
-   package type. Then, you may either continue providing optional information, or end the wizard using `:x`.
-2. Look at the generated `repository.json` file. It contains the repository creation parameters.
-3. Use the JFrog CLI to create the repository according to the created JSON file:
+2. Ensure you have both `build.gradle` and `settings.gradle` files in your project. 
+   If `settings.gradle` doesn't exist, create it with:
 
    ```bash
-   jf rt rc repository.json
+   echo "rootProject.name = 'demo'" > settings.gradle
    ```
-
-4. Now let's use some advanced capabilities by executing this command(for linux users, for windows find the equivalent or skip) :
-
-   ```bash
-   for maturity in rc release prod; do 
-      jf rt rc --vars "team=$PROJECT_KEY;pkgType=gradle;maturity=$maturity;" repo-cli-template.json 
-   done
-   ```
-For example:
-
-1. For each local repository:
-   ```bash
-   # Create a configuration file
-   jf rt rpt local-repo.json
-   
-   # Then edit it to set key, packageType, etc.
-   # Then create the repository
-   jf rt rc local-repo.json
-   ```
-
-2. For the remote repository:
-   ```bash
-   # Create a configuration file
-   jf rt rpt remote-repo.json
-   
-   # Edit for Gradle with appropriate URL
-   jf rt rc remote-repo.json
-   ```
-
-3. For the virtual repository:
-   ```bash
-   # Create a configuration file
-   jf rt rpt virtual-repo.json
-   
-   # Edit to include all repos and set default deployment repo
-   jf rt rc virtual-repo.json
-   ```
-### [OPTIONAL] Create a repository structure using the Rest API (YAML PATCH)
-> with this option, you can create multiple repositories in 1 API call. However you can't :
->
-> - parameterize your repo configuration
-> - set the environment field
-
-### For Gradle Repositories
-
-1. Create the Gradle repositories:
-
-   ```bash
-      # NOTES :
-      #   - update repo-api-def-all.yaml with your values
-      #   - don't use -d option to specify the YAML file
-      #   - environment field cannot be set (yet)
-
-   jf rt curl \
-       -X PATCH \
-       -H "Content-Type: application/yaml" \
-       -T gradle-repo-api-def-all.yaml  \
-        "api/system/configuration"
-   ```
-Note: Since you cannot set the environment field for the repos , from the JFrog UI set the repository environments 
-to match the above table  . 
-
-For example:
-```
-sdxapp-gradle-remote -> DEV
-sdxapp-gradle-virtual -> DEV
-
-sdxapp-gradle-rc-local -> DEV
-sdxapp-gradle-dev-local -> DEV
-
-sdxapp-gradle-prod-local  -> PROD
-sdxapp-gradle-release-local -> PROD
-```
-
-2. Delete the Gradle repositories:
-
-   ```bash
-      jf rt curl \
-       -X PATCH \
-       -H "Content-Type: application/yaml" \
-       -T gradle-repo-api-def-all-delete.yaml  \
-        "api/system/configuration"
-   ```
-
-## [OPTIONAL] Create a repository structure using the JFrog's Terraform Provider
-
-Follow the terraform demo in https://github.com/jfrog/trainings/tree/main/demos/advanced-repositories at the bottom.
-
-## Verification
-
-After creating the repositories, you can verify them in the Artifactory UI:
-
-1. Go to your JFrog Platform UI
-2. Navigate to Administration > Repositories
-3. You should see your newly created repositories listed
-4. Check the configuration of the virtual repository to ensure it includes all the local and remote repositories 
-
----
-## Create permission targets via the API
-
-> **IMPORTANT NOTE** : From Artifactory V7.72.0, the permission targets are managed by JFrog Access (internal microservice) and so the official API endpoint is ```access/api/v2/permissions```. The previous API endpoint ```artifactory/api/v2/security/permissions``` is still maintained for the moment but will be deprecated in the future (no ETA).
-
-> Here is the [official documentation on the API](https://jfrog.com/help/r/jfrog-rest-apis/permissions)
-
-1. Create the following groups from UI: 
-
-`<PROJECT_KEY>_developers`, `<PROJECT_KEY>_uploaders`
-
-In my test I have used the `<PROJECT_KEY>` as `sdxapp`.
-
-2. Create the following permission target(s) :
-
-Permission name | Resources | Population | Action | Comment
----|---|--- |--- |---
-<PROJECT_KEY>_developers_pt | All Remote / "<PROJECT_KEY>-gradle-remote" | developers group | Read, Deploy/Cache ( which automatically adds the "Annotate" action)
-<PROJECT_KEY>_uploaders_pt  | ( All Remote + All local) / All "<PROJECT_KEY>-*" | uploaders group | Read, Deploy/Cache, Delete/Overwrite
-
-
-
-by using the following command:
+3. Set build information environment variables:
 
 ```bash
+export PROJECT_KEY=sdxapp # 'export' command is for linux, for windows use 'set' command
+export JFROG_CLI_BUILD_NAME=${PROJECT_KEY}-gradle-app
+# Create a datetime suffix (e.g., 20250521_142530)
+DATE_SUFFIX=$(date +"%Y%m%d_%H%M%S")
+# Concatenate to form the unique build number
+export JFROG_CLI_BUILD_NUMBER="jf_${DATE_SUFFIX}"
+export JFROG_CLI_SERVER_ID=myartifactory
+export JFROG_CLI_RELEASES_REPO=${JFROG_CLI_SERVER_ID}/${PROJECT_KEY}-gradle-virtual 
+export JFROG_CLI_EXTRACTORS_REMOTE=${JFROG_CLI_SERVER_ID}/${PROJECT_KEY}-gradle-virtual
+```
+4. Configure Gradle for JFrog Artifactory:
+
+   ```bash
+   jf gradlec \
+      --repo-resolve=${PROJECT_KEY}-gradle-virtual \
+      --repo-deploy=${PROJECT_KEY}-gradle-virtual \
+      --server-id-resolve=${JFROG_CLI_SERVER_ID} \
+      --server-id-deploy=${JFROG_CLI_SERVER_ID}
+
+   ```
+
+5. Build and publish the application (make sure to run this command in the directory containing both `build.gradle` and `settings.gradle`):
+
+   ```bash
+   jf gradle clean artifactoryPublish -x test -b ./build.gradle --build-name=${JFROG_CLI_BUILD_NAME} --build-number=${JFROG_CLI_BUILD_NUMBER} --project=${PROJECT_KEY}
+   ```
+
+5. Collect and publish build information to Artifactory:
+
+   ```bash
+   jf rt bce ${JFROG_CLI_BUILD_NAME} ${JFROG_CLI_BUILD_NUMBER} --project=${PROJECT_KEY} # Build environment collection
+   jf rt bag ${JFROG_CLI_BUILD_NAME} ${JFROG_CLI_BUILD_NUMBER} --project=${PROJECT_KEY}
+   jf rt bp  ${JFROG_CLI_BUILD_NAME} ${JFROG_CLI_BUILD_NUMBER} --detailed-summary=true --project=${PROJECT_KEY} # Build publish
+   ```
+
+Navigate to "Artifactory" -> "Builds", and check for your build named `${PROJECT_KEY}-gradle-app` with build number `${JFROG_CLI_BUILD_NUMBER}`.
+
+You will find the Published artifacts from the build is in `${PROJECT_KEY}-gradle-rc-local` repo in `DEV` Environment.
+
+## 2. Promote the Build
+
+Perform QA tests and promote the build to the `${PROJECT_KEY}-gradle-dev-local` repository in the `DEV` environment using the **move** option (--copy=false).
+
+```bash
+jf rt bpr ${JFROG_CLI_BUILD_NAME} ${JFROG_CLI_BUILD_NUMBER} ${PROJECT_KEY}-gradle-dev-local --project=${PROJECT_KEY} --copy=false  --include-dependencies=false --status="QA Tests Passed" --comment="Ready for production release" --props="Testing=passed;release-version=hot-fix" 
+
+```
+
+
+
+## 3. Generate and upload signing keys to Artifactory:
+
+Generate a GPG key that will be used to sign the Release Bundle and upload it to the JFrog Platform as mentioned in [generate_rbv2_gpg_key.md](generate_rbv2_gpg_key.md)
+
+## 4. RBv2 (Release Bundle v2) Management from the UI
+
+### Creation
+
+1. From the build's screen in Artifactory, click on your build name (`<PROJECT_KEY>-gradle-app`)
+2. Hover over the build number `$JFROG_CLI_BUILD_NUMBER` and click on the 3 dots on the far right
+3. Click on "Create Release Bundle"
+
+* Release Bundle Name: `<PROJECT_KEY>-gradle-release`
+* Release Bundle Version: `1.0`
+* Signing Key: `jfrog_rbv2_key1`
+
+Click "Next", then "Create".
+
+### Promotion
+
+In the "Promotions" sub-tab for the Release Bundle `<PROJECT_KEY>-gradle-release` ( example: `sdxapp-gradle-release`)  , Double click on the 
+Release Bundle Version: `1.0`  to  navigate to the RBv2's details screen , click "Actions > Promote".
+
+* For Signing Key, select `jfrog_rbv2_key1`.
+* For Target Environment, select `PROD`.
+
+Click "Next", ensure that the "Target Repositories" for Gradle artifacts is set properly, and click "Promote".
+
+## 5. RBv2 Management via API
+
+### Creation via API
+
+1. Go to the course-2/lab-3 folder and update the `rb_from_aql_ok.json` file to use your Gradle repositories:
+
+   ```bash
+   cd ../../lab-3/
+   ```
+
+2. Edit `rb_from_aql_ok.json` to update:
+   - `release_bundle_name`: Use `<PROJECT_KEY>-gradle-rb`
+   - Update the AQL to search in your Gradle repositories
+   - Adjust any other repository references
+```
 # Set your project key
 export PROJECT_KEY="sdxapp" # or any other project key you want
 
 export JFROG_SAAS_URL="https://example.jfrog.io"
 
+export rb_name="${PROJECT_KEY}-gradle-rb" # Match release_bundle_name from "rb_json/${PROJECT_KEY}_rb_from_aql_ok.json"
+export rb_version="1.0.2" # Match release_bundle_version from "rb_json/${PROJECT_KEY}_rb_from_aql_ok.json"
+
 # Generate a final JSON by substituting variables
-envsubst < project_developers_template.json > "repo_json/${PROJECT_KEY}_developers_template.json"
-envsubst < project_uploaders_template.json > "repo_json/${PROJECT_KEY}_uploaders_template.json"
-
-curl \
-   -X POST \
-   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-   -H "Content-Type: application/json" \
-   -d @"repo_json/${PROJECT_KEY}_developers_template.json" \
-"$JFROG_SAAS_URL/access/api/v2/permissions"
-
-curl \
-   -X POST \
-   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-   -H "Content-Type: application/json" \
-   -d @"repo_json/${PROJECT_KEY}_uploaders_template.json" \
-"$JFROG_SAAS_URL/access/api/v2/permissions"
-
+envsubst < rb_from_aql_ok.json > "rb_json/${PROJECT_KEY}_rb_from_aql_ok.json"
+envsubst < rb_promotion.json > "rb_json/${PROJECT_KEY}_rb_promotion.json"
 ```
+3. Create the Release Bundle:
+ Ref: [Release Bundle V2 APIs](https://jfrog.com/help/r/jfrog-rest-apis/release-bundle-v2-apis)
 
-### [OPTIONAL] Create permission targets via the JFrog CLI
+   ```bash
+   curl \
+       -XPOST \
+       -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+       -H "Content-Type: application/json" \
+       -H "X-JFrog-Signing-Key-Name: jfrog_rbv2_key1" \
+       -d @"rb_json/${PROJECT_KEY}_rb_from_aql_ok.json" \
+   "$JFROG_SAAS_URL/lifecycle/api/v2/release_bundle?project=${PROJECT_KEY}" 
+   ```
 
-> relies on [```artifactory/api/v2/security/permissions```](https://jfrog.com/help/r/jfrog-rest-apis/create-permission-target)
-that will be depricated in future.
+## [OPTIONAL] Promotion via API
 
-Create the following permission target(s) :
-
-Permission name | Resources | Population | Action | Comment
----|---|--- |--- |---
-<PROJECT_KEY>_consumers  | All Remote + All local | <PROJECT_KEY>_uploaders group | Read, Annotate
+Update `rb_promotion.json` to reference your Gradle repositories in the `included_repository_keys` field.
 
 ```bash
-# generate 1 permission target definition and store it into permissions.json
-jf rt ptt pt-cli-template.json
 
-# apply 1 permission target definition
-jf rt ptc pt-cli-template.json
-```
----
 
-## Creating Scoped Tokens
-
-> Here is the [official documentation for Tokens](https://jfrog.com/help/r/jfrog-rest-apis/access-tokens)
-
-### Identity token
-
-Generate an identity token (will inherit the permission related to the current user) by executing the following command
-
-```bash
 curl \
-   -XPOST \
-   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-   -d "scope=applied-permissions/user" \
-$JFROG_SAAS_URL/access/api/v1/tokens
+    -XPOST \
+    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "X-JFrog-Signing-Key-Name: jfrog_rbv2_key1" \
+    -d @"rb_json/${PROJECT_KEY}_rb_promotion.json" \
+"$JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version?project=${PROJECT_KEY}" 
 ```
 
-### Scoped token
-
-Generate a token based on groups (will inherit the permission related to the groups) by executing the following command
+## [OPTIONAL] Promotion via JFrog CLI
 
 ```bash
-curl \
-   -XPOST \
-   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-   -d "scope=applied-permissions/groups:USERNAME_uploaders" \
-$JFROG_SAAS_URL/access/api/v1/tokens
+jf rbp --signing-key="jfrog_rbv2_key1" --project=${PROJECT_KEY} $rb_name $rb_version PROD
+## NOTE - save the created_millis value for later
+```
+Output:
+```
+16:11:30 [🔵Info] Release Bundle successfully promoted
+{
+  "repository_key" : "release-bundles-v2",
+  "release_bundle_name" : "sdxapp-gradle-rb",
+  "release_bundle_version" : "1.0.0",
+  "environment" : "PROD",
+  "included_repository_keys" : [ "sdxapp-gradle-release-local" ],
+  "excluded_repository_keys" : [ ],
+  "created" : "2025-05-15T23:35:23.900Z",
+  "created_millis" : 1747353204721
+}
 ```
 
-### [OPTIONAL] Scoped token for a transient user (non existing user)
+[Get Release Bundle v2 Version Status](https://jfrog.com/help/r/jfrog-rest-apis/get-release-bundle-v2-version-status)
+```
+curl -i -k -X GET "$JFROG_SAAS_URL/lifecycle/api/v2/release_bundle/statuses/$rb_name/$rb_version?project=${PROJECT_KEY}" \
+    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN"
+```
+Output:
+```
+{
+  "status" : "COMPLETED"
+}
+```
 
-> a token can be [refreshed](https://jfrog.com/help/r/jfrog-rest-apis/refresh-token)
+## [OPTIONAL] Deletion of RBV2 promotion record via the API
 
-Generate a transient user (will inherit the permission related to the specified groups) by executing the following command
+> No deletion via the JFrog CLI
+
+Note: You have to specify the creation time of the RBV2 promotion record in ms.  Use the 
+
+[Get Release Bundle v2 Version Promotion Details](https://jfrog.com/help/r/jfrog-rest-apis/get-release-bundle-v2-version-promotion-details)
+
+to get that info.
+Ref: [Common Optional Query Parameters](https://jfrog.com/help/r/jfrog-rest-apis/common-optional-query-parameters)
+
+```
+curl -i -k -X GET "$JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version?project=${PROJECT_KEY}" \
+    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN"
+```
+Output:
+```
+{
+  "promotions" : [ {
+    "status" : "COMPLETED",
+    "repository_key" : "release-bundles-v2",
+    "release_bundle_name" : "sdxapp-gradle-rb",
+    "release_bundle_version" : "1.0.0",
+    "environment" : "PROD",
+    "service_id" : "jfrt@01jvam5dvet37v0ga18axy1t8d",
+    "created_by" : "sureshv",
+    "created" : "2025-05-15T23:53:24.721Z",
+    "created_millis" : 1747353204721,
+    "xray_retrieval_status" : "NOT_APPLICABLE"
+  } ],
+  "total" : 1,
+  "limit" : 1000,
+  "offset" : 0
+}
+```
 
 ```bash
-# the token will expire in 300 seconds and can be refreshed
-# it has to be executed by an Admin
+#specify the creation time of the RBV2 promotion in ms
+rb_creation_time="1747353204721"
+
+
 curl \
-   -XPOST \
-   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-   -d "username=ninja" \
-   -d "refreshable=true" \
-   -d "expires_in=300" \
-   -d "scope=applied-permissions/groups:USERNAME_uploaders" \
-$JFROG_SAAS_URL/access/api/v1/tokens
+    -XDELETE \
+    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+    -H "X-JFrog-Signing-Key-Name: jfrog_rbv2_key1" \
+"$JFROG_SAAS_URL/lifecycle/api/v2/promotion/records/$rb_name/$rb_version/$rb_creation_time?async=false&project=${PROJECT_KEY}" 
 ```

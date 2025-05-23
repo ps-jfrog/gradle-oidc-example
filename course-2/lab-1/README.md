@@ -1,96 +1,170 @@
-# Lab: Artifact management basics
+# Lab 1: Gradle Repository Creation + Applying Properties + Securing Access
 
-## Goals
+This lab will guide you through creating Gradle repositories in JFrog Artifactory.
 
-Perform basics actions via the UI & API regarding artifacts management
+## Prerequisites
 
-## Pre requisites
+- JFrog Artifactory access
+- JFrog CLI installed and configured
 
-Create the following repository via the UI :
 
-Repo type | Repo key | Package type | Environment | Comment
----|---|--- |---|---
-LOCAL | [USERNAME]-generic-test-local | GENERIC | DEV |
+## 1. Create Gradle Repositories
 
-## Upload / Download via the REST API
+> Come up with a ```<PROJECT_KEY>``` which will be used as prefix for all your repositories
 
-1. Upload a random file
+In my test I have used the `<PROJECT_KEY>` as the customer name . For example `sdxapp`.
 
-```bash
-echo "Hello World" > test.txt
+You'll create the following repositories for Gradle:
 
-curl \
-   -X PUT \
-   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-   -d "@test.txt" \
-$JFROG_SAAS_URL/artifactory/<USERNAME>-generic-test-local/test.txt
+| Repo type | Repo key | Package type | Environment | Comment |
+|---|---|---|---|---|
+| LOCAL | <PROJECT_KEY>-gradle-dev-local | GRADLE | DEV | |
+| LOCAL | <PROJECT_KEY>-gradle-rc-local | GRADLE | DEV | |
+| LOCAL | <PROJECT_KEY>-gradle-release-local | GRADLE | PROD | |
+| LOCAL | <PROJECT_KEY>-gradle-prod-local | GRADLE | PROD | |
+| REMOTE | <PROJECT_KEY>-gradle-remote | GRADLE | DEV | |
+| VIRTUAL | <PROJECT_KEY>-gradle-virtual | GRADLE | DEV | Includes all repos above with default deployment to <PROJECT_KEY>-gradle-rc-local |
+
+
+### Using the provided script
+
+We've provided a script to automate the repository creation process:
+```
+cd course-2/lab-1
+```
+1. Make the script executable:
+   ```bash
+   chmod +x create_gradle_repos.sh
+   ```
+
+2. Run the script and provide the customer name and that will be used as the `<PROJECT_KEY>` prefix for the repository names:
+   ```bash
+   ./create_gradle_repos.sh
+   ```
+
+
+
+### [OPTIONAL] Manual repository creation using JFrog CLI
+
+If you prefer to create repositories manually, follow these steps:
+
+1. Use the repository creation template command to generate a JSON file describing the repository:
+
+   ```bash
+   jf rt rpt repository.json
+   ```
+
+   This is a command-line "wizard". Use the `tab` key and arrow keys to go through the wizard.
+   The only thing you are required to provide is the repository's name, class (local/remote/virtual), and
+   package type. Then, you may either continue providing optional information, or end the wizard using `:x`.
+2. Look at the generated `repository.json` file. It contains the repository creation parameters.
+3. Use the JFrog CLI to create the repository according to the created JSON file:
+
+   ```bash
+   jf rt rc repository.json
+   ```
+
+4. Now let's use some advanced capabilities by executing this command(for linux users, for windows find the equivalent or skip) :
+
+   ```bash
+   for maturity in rc release prod; do 
+      jf rt rc --vars "team=$PROJECT_KEY;pkgType=gradle;maturity=$maturity;" repo-cli-template.json 
+   done
+   ```
+For example:
+
+1. For each local repository:
+   ```bash
+   # Create a configuration file
+   jf rt rpt local-repo.json
+   
+   # Then edit it to set key, packageType, etc.
+   # Then create the repository
+   jf rt rc local-repo.json
+   ```
+
+2. For the remote repository:
+   ```bash
+   # Create a configuration file
+   jf rt rpt remote-repo.json
+   
+   # Edit for Gradle with appropriate URL
+   jf rt rc remote-repo.json
+   ```
+
+3. For the virtual repository:
+   ```bash
+   # Create a configuration file
+   jf rt rpt virtual-repo.json
+   
+   # Edit to include all repos and set default deployment repo
+   jf rt rc virtual-repo.json
+   ```
+### [OPTIONAL] Create a repository structure using the Rest API (YAML PATCH)
+> with this option, you can create multiple repositories in 1 API call. However you can't :
+>
+> - parameterize your repo configuration
+> - set the environment field
+
+### For Gradle Repositories
+
+1. Create the Gradle repositories:
+
+   ```bash
+      # NOTES :
+      #   - update repo-api-def-all.yaml with your values
+      #   - don't use -d option to specify the YAML file
+      #   - environment field cannot be set (yet)
+
+   jf rt curl \
+       -X PATCH \
+       -H "Content-Type: application/yaml" \
+       -T gradle-repo-api-def-all.yaml  \
+        "api/system/configuration"
+   ```
+Note: Since you cannot set the environment field for the repos , from the JFrog UI set the repository environments 
+to match the above table  . 
+
+For example:
+```
+sdxapp-gradle-remote -> DEV
+sdxapp-gradle-virtual -> DEV
+
+sdxapp-gradle-rc-local -> DEV
+sdxapp-gradle-dev-local -> DEV
+
+sdxapp-gradle-prod-local  -> PROD
+sdxapp-gradle-release-local -> PROD
 ```
 
-2. Delete the file from your local machine.
-3. Download the file using the REST API:
+2. Delete the Gradle repositories:
 
-```bash
-curl \
-   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-$JFROG_SAAS_URL/artifactory/<USERNAME>-generic-test-local/test.txt
-```
+   ```bash
+      jf rt curl \
+       -X PATCH \
+       -H "Content-Type: application/yaml" \
+       -T gradle-repo-api-def-all-delete.yaml  \
+        "api/system/configuration"
+   ```
+
+## [OPTIONAL] Create a repository structure using the JFrog's Terraform Provider
+
+Follow the terraform demo in https://github.com/jfrog/trainings/tree/main/demos/advanced-repositories at the bottom.
+
+## Verification
+
+After creating the repositories, you can verify them in the Artifactory UI:
+
+1. Go to your JFrog Platform UI
+2. Navigate to Administration > Repositories
+3. You should see your newly created repositories listed
+4. Check the configuration of the virtual repository to ensure it includes all the local and remote repositories 
+
 ---
-## Install and configure the JFrog CLI
-1. Install the [JFrog CLI](https://jfrog.com/getcli/)
-```
-curl -fkL https://install-cli.jfrog.io | sh 
-```
-2. Configure the JFrog CLI with your Artifactory instance as mentioned in [jfrog-cli/authentication](https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/authentication):
 
-Option 1: Interactive configuration:
+## 2. Applying Properties
 
-- Configure CLI that point to JFrog Instance ``jf config add --interactive`` or ``jf c add --interactive``
-    - Choose a server ID: ```${{unique name}}```
-    - JFrog platform URL: ```https://{{host}}.jfrog.io```
-    - JFrog access token (Leave blank for username and password/API key): ```${{access_token}}```
-        - Create access token from UI ``Administration`` -> ``Identity and Access`` -> ``Access Tokens``
-    - Is the Artifactory reverse proxy configured to accept a client certificate (y/n) [n]?: ``n``
-
-
-- Use newly created config ``jf config use myartifactory``
-
-
-
-or
-
-Option 2: Browser Interactive configuration:
-
-```
-jf c add --interactive=true --url=<ARTIFACTORY BASE URL> --user=adminuser myartifactory
-
-```
-
-- Healthcheck ``jf rt ping``
-
-
----
-## Upload / Download via the JFrog CLI
-
-1. Create multiple text files
-
-```bash
-# This is a Linux command. If you're using Windows you can create the files manually or find the Windows equivalent - what takes faster
-for d in monday tuesday wednesday thursday; do echo "Hello $d \!" > ${d}.txt ; done
-```
-
-2. Upload multiple files to the repository using the JFrog CLI:
-
-```bash
-jf rt upload "*.txt" <USERNAME>-generic-test-local/cli-tests/
-```
-
-3. Download the content of a folder from the repository into your local machine:
-
-```bash
-jf rt download <USERNAME>-generic-test-local/cli-tests/ .
-```
-
-## Apply properties via the UI
+### Apply properties via the UI
 
 1. In the artifacts browser view, navigate to the file you just uploaded.
 2. Navigate to the `Properties` tab.
@@ -98,7 +172,7 @@ jf rt download <USERNAME>-generic-test-local/cli-tests/ .
    + `app.name` with the value `snake`
    + `app.version` with the value `1.0.0`
 
-## [OPTIONAL] Apply properties via the REST API
+### [OPTIONAL] Apply properties via the REST API
 
 Assign the following properties to a file
 
@@ -109,7 +183,7 @@ curl \
 "$JFROG_SAAS_URL/artifactory/api/storage/<USERNAME>-generic-test-local/cli-tests/monday.txt?properties=os=win,linux;qa=done"
 ```
 
-## [OPTIONAL] Apply properties via the JFrog CLI
+### [OPTIONAL] Apply properties via the JFrog CLI
 
 Assign the following properties to a file
 
@@ -122,45 +196,129 @@ by executing the following command (don't forget to update the repository key)
 jf rt sp "<USERNAME>-generic-test-local/test.txt" "runtime.deploy.datetime=20240219_08000;runtime.deploy.account=robot_sa"
 ```
 
-## Search for artifacts with Artifactory Query Language (AQL)
+---
+## 3. Create permission targets via the API
 
-> Here is the [official documentation for AQL](https://jfrog.com/help/r/jfrog-rest-apis/artifactory-query-language)
+> **IMPORTANT NOTE** : From Artifactory V7.72.0, the permission targets are managed by JFrog Access (internal microservice) and so the official API endpoint is ```access/api/v2/permissions```. The previous API endpoint ```artifactory/api/v2/security/permissions``` is still maintained for the moment but will be deprecated in the future (no ETA).
 
-1. Update the following files with your own repository key
+> Here is the [official documentation on the API](https://jfrog.com/help/r/jfrog-rest-apis/permissions)
 
-+ **query-aql-properties-rest.txt**
-+ **query-aql-cli.json**
+1. Create the following groups from UI: 
 
-Execute the following commands
+`<PROJECT_KEY>_developers`, `<PROJECT_KEY>_uploaders`
+
+In my test I have used the `<PROJECT_KEY>` as `sdxapp`.
+
+2. Create the following permission target(s) :
+
+Permission name | Resources | Population | Action | Comment
+---|---|--- |--- |---
+<PROJECT_KEY>_developers_pt | All Remote / "<PROJECT_KEY>-gradle-remote" | developers group | Read, Deploy/Cache ( which automatically adds the "Annotate" action)
+<PROJECT_KEY>_uploaders_pt  | ( All Remote + All local) / All "<PROJECT_KEY>-*" | uploaders group | Read, Deploy/Cache, Delete/Overwrite
+
+
+
+by using the following command:
 
 ```bash
+# Set your project key
+export PROJECT_KEY="sdxapp" # or any other project key you want
 
-# Run an AQL query via the API
-jf rt curl -XPOST -H "Content-type: text/plain" api/search/aql -d"@query-aql-properties-rest.txt"
+export JFROG_SAAS_URL="https://example.jfrog.io"
 
-# Run an AQL query via the JFrog CLI
-jf rt s --spec="query-aql-cli.json"
+# Generate a final JSON by substituting variables
+envsubst < project_developers_template.json > "repo_json/${PROJECT_KEY}_developers_template.json"
+envsubst < project_uploaders_template.json > "repo_json/${PROJECT_KEY}_uploaders_template.json"
+
+curl \
+   -X POST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -H "Content-Type: application/json" \
+   -d @"repo_json/${PROJECT_KEY}_developers_template.json" \
+"$JFROG_SAAS_URL/access/api/v2/permissions"
+
+curl \
+   -X POST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -H "Content-Type: application/json" \
+   -d @"repo_json/${PROJECT_KEY}_uploaders_template.json" \
+"$JFROG_SAAS_URL/access/api/v2/permissions"
+
 ```
 
-## [OPTIONAL] Search for artifacts with GraphQL
+### [OPTIONAL] Create permission targets via the JFrog CLI
 
-> Here is the [official documentation for GraphQL](https://jfrog.com/help/r/jfrog-rest-apis/graphql)
+> relies on [```artifactory/api/v2/security/permissions```](https://jfrog.com/help/r/jfrog-rest-apis/create-permission-target)
+that will be depricated in future.
+
+Create the following permission target(s) :
+
+Permission name | Resources | Population | Action | Comment
+---|---|--- |--- |---
+<PROJECT_KEY>_consumers  | All Remote + All local | <PROJECT_KEY>_uploaders group | Read, Annotate
 
 ```bash
-# the JFrog CLI rt curl command doesn't target metadata/api
-# we have to use curl
+# generate 1 permission target definition and store it into permissions.json
+jf rt ptt pt-cli-template.json
+
+# apply 1 permission target definition
+jf rt ptc pt-cli-template.json
+```
+---
+
+### Creating Scoped Tokens
+
+> Here is the [official documentation for Tokens](https://jfrog.com/help/r/jfrog-rest-apis/access-tokens)
+
+#### Identity token
+
+Generate an identity token (will inherit the permission related to the current user) by executing the following command
+
+```bash
 curl \
    -XPOST \
    -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
-   -H "Content-Type: application/json" \
-   -d "@query-graphql.json" \
-"$JFROG_SAAS_URL/metadata/api/v1/query" 
+   -d "scope=applied-permissions/user" \
+$JFROG_SAAS_URL/access/api/v1/tokens
 ```
 
-### [OPTIONAL] GraphiQL
+#### Scoped token
 
-1. In your browser, go to  `$JFROG_SAAS_URL/metadata/api/v1/query/graphiql`and specify your access token
-2. Extract the query from the JSON file  '{"query" : "<QUERY_TO_EXTRACT>"}  from `../../demos/basics-search/query-graphql.json`
-3. Paste it in the query editor and execute it
+Generate a token based on groups (will inherit the permission related to the groups) by executing the following command
+
+```bash
+curl \
+   -XPOST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -d "scope=applied-permissions/groups:USERNAME_uploaders" \
+$JFROG_SAAS_URL/access/api/v1/tokens
+```
+
+#### [OPTIONAL] Scoped token for a transient user (non existing user)
+
+> a token can be [refreshed](https://jfrog.com/help/r/jfrog-rest-apis/refresh-token)
+
+Generate a transient user (will inherit the permission related to the specified groups) by executing the following command
+
+```bash
+# the token will expire in 300 seconds and can be refreshed
+# it has to be executed by an Admin
+curl \
+   -XPOST \
+   -H "Authorization: Bearer $JFROG_ACCESS_TOKEN" \
+   -d "username=ninja" \
+   -d "refreshable=true" \
+   -d "expires_in=300" \
+   -d "scope=applied-permissions/groups:USERNAME_uploaders" \
+$JFROG_SAAS_URL/access/api/v1/tokens
+```
+
+
+
+
+
+
+
+
 
 
