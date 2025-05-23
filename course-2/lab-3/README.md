@@ -1,4 +1,4 @@
-# Lab 3: Install JF CLI + AQL Usage
+# Lab 3: Install JF CLI + AQL Usage + GH Actions
 
 ## Goals
 
